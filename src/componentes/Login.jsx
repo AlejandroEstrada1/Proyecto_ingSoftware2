@@ -4,32 +4,43 @@ function Login({ cambiarPantalla, iniciarSesion }) {
   const [correo, setCorreo] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [mensaje, setMensaje] = useState("")
 
-  const manejarLogin = (e) => {
+  const manejarLogin = async (e) => {
     e.preventDefault()
 
     if (!correo || !password) {
       setError("Todos los campos son obligatorios")
+      setMensaje("")
       return
     }
 
-    const usuarioGuardado = JSON.parse(localStorage.getItem("usuario"))
+    try {
+      const respuesta = await fetch("http://localhost:3001/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ correo, password }),
+      })
 
-    if (!usuarioGuardado) {
-      setError("No hay usuario registrado")
-      return
-    }
+      const datos = await respuesta.json()
 
-    if (
-      usuarioGuardado.correo === correo &&
-      usuarioGuardado.password === password
-    ) {
+      if (!respuesta.ok) {
+        setError(datos.mensaje)
+        setMensaje("")
+        return
+      }
+
       localStorage.setItem("sesion", "activa")
-      alert("Login exitoso")
-    setError("")
-    iniciarSesion()
-    } else {
-      setError("Credenciales incorrectas")
+      localStorage.setItem("usuario", JSON.stringify(datos.usuario))
+
+      setMensaje("Login exitoso")
+      setError("")
+      iniciarSesion()
+    } catch (error) {
+      setError("No se pudo conectar con el backend")
+      setMensaje("")
     }
   }
 
@@ -60,6 +71,7 @@ function Login({ cambiarPantalla, iniciarSesion }) {
       </form>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
+      {mensaje && <p style={{ color: "green" }}>{mensaje}</p>}
 
       <p>
         ¿No tienes cuenta?{" "}

@@ -1,135 +1,203 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 function Dashboard({ cerrarSesion }) {
-  const [solicitudes, setSolicitudes] = useState(
-    JSON.parse(localStorage.getItem("solicitudes")) || []
-  )
-
-  const [titulo, setTitulo] = useState("")
-  const [descripcion, setDescripcion] = useState("")
-  const [estado, setEstado] = useState("Pendiente")
+  const [productos, setProductos] = useState([])
+  const [nombre, setNombre] = useState("")
+  const [precio, setPrecio] = useState("")
+  const [cantidad, setCantidad] = useState("")
   const [editandoId, setEditandoId] = useState(null)
   const [error, setError] = useState("")
+  const [mensaje, setMensaje] = useState("")
 
-  const guardarEnLocalStorage = (lista) => {
-    localStorage.setItem("solicitudes", JSON.stringify(lista))
-    setSolicitudes(lista)
+  const API = "http://localhost:3001/api/productos"
+
+  const obtenerProductos = async () => {
+    try {
+      const respuesta = await fetch(API)
+
+      if (!respuesta.ok) {
+        throw new Error("Error al obtener productos")
+      }
+
+      const datos = await respuesta.json()
+      setProductos(datos)
+    } catch (error) {
+      setError("No se pudo conectar con el backend para listar productos")
+    }
   }
 
-  const manejarSubmit = (e) => {
+  useEffect(() => {
+    obtenerProductos()
+  }, [])
+
+  const manejarSubmit = async (e) => {
     e.preventDefault()
 
-    if (!titulo || !descripcion || !estado) {
+    if (!nombre || !precio || !cantidad) {
       setError("Todos los campos son obligatorios")
+      setMensaje("")
       return
     }
 
-    if (editandoId) {
-      const listaActualizada = solicitudes.map((solicitud) =>
-        solicitud.id === editandoId
-          ? { ...solicitud, titulo, descripcion, estado }
-          : solicitud
-      )
+    if (Number(precio) <= 0 || Number(cantidad) <= 0) {
+      setError("Precio y cantidad deben ser mayores a 0")
+      setMensaje("")
+      return
+    }
 
-      guardarEnLocalStorage(listaActualizada)
-      setEditandoId(null)
-    } else {
-      const nuevaSolicitud = {
-        id: Date.now(),
-        titulo,
-        descripcion,
-        estado,
-        fecha: new Date().toLocaleDateString(),
+    const producto = {
+      nombre,
+      precio: Number(precio),
+      cantidad: Number(cantidad),
+    }
+
+    try {
+      let respuesta
+
+      if (editandoId) {
+        respuesta = await fetch(`${API}/${editandoId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(producto),
+        })
+      } else {
+        respuesta = await fetch(API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(producto),
+        })
       }
 
-      guardarEnLocalStorage([...solicitudes, nuevaSolicitud])
-    }
+      const datos = await respuesta.json()
 
-    setTitulo("")
-    setDescripcion("")
-    setEstado("Pendiente")
-    setError("")
-  }
+      if (!respuesta.ok) {
+        setError(datos.mensaje || "Error al guardar el producto")
+        setMensaje("")
+        return
+      }
 
-  const editarSolicitud = (solicitud) => {
-    setTitulo(solicitud.titulo)
-    setDescripcion(solicitud.descripcion)
-    setEstado(solicitud.estado)
-    setEditandoId(solicitud.id)
-  }
-
-  const eliminarSolicitud = (id) => {
-    const confirmar = confirm("¿Seguro que desea eliminar esta solicitud?")
-
-    if (confirmar) {
-      const listaFiltrada = solicitudes.filter(
-        (solicitud) => solicitud.id !== id
+      setMensaje(
+        editandoId
+          ? "Producto actualizado correctamente"
+          : "Producto guardado correctamente"
       )
-      guardarEnLocalStorage(listaFiltrada)
+
+      setError("")
+      setNombre("")
+      setPrecio("")
+      setCantidad("")
+      setEditandoId(null)
+
+      obtenerProductos()
+    } catch (error) {
+      setError("No se pudo conectar con el backend para guardar el producto")
+      setMensaje("")
     }
   }
+
+  const editarProducto = (producto) => {
+    setNombre(producto.nombre)
+    setPrecio(producto.precio)
+    setCantidad(producto.cantidad)
+    setEditandoId(producto.id)
+    setError("")
+    setMensaje("")
+  }
+
+  const eliminarProducto = async (id) => {
+    const confirmar = confirm("¿Seguro que desea eliminar este producto?")
+
+    if (!confirmar) return
+
+    try {
+      const respuesta = await fetch(`${API}/${id}`, {
+        method: "DELETE",
+      })
+
+      const datos = await respuesta.json()
+
+      if (!respuesta.ok) {
+        setError(datos.mensaje || "Error al eliminar el producto")
+        setMensaje("")
+        return
+      }
+
+      setMensaje("Producto eliminado correctamente")
+      setError("")
+      obtenerProductos()
+    } catch (error) {
+      setError("No se pudo conectar con el backend para eliminar el producto")
+      setMensaje("")
+    }
+  }
+
+  const totalCarrito = productos.reduce(
+    (total, producto) => total + producto.precio * producto.cantidad,
+    0
+  )
 
   return (
     <div>
-      <h1>Panel principal</h1>
+      <h1>Panel EcoMart</h1>
       <button onClick={cerrarSesion}>Cerrar sesión</button>
 
-      <h2>{editandoId ? "Editar solicitud" : "Crear solicitud"}</h2>
+      <h2>{editandoId ? "Editar producto" : "Agregar producto"}</h2>
 
       <form onSubmit={manejarSubmit}>
-        <div>
-          <label>Título:</label>
-          <input
-            type="text"
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-          />
-        </div>
+        <input
+          type="text"
+          placeholder="Nombre del producto"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+        />
 
-        <div>
-          <label>Descripción:</label>
-          <input
-            type="text"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-          />
-        </div>
+        <input
+          type="number"
+          placeholder="Precio"
+          value={precio}
+          onChange={(e) => setPrecio(e.target.value)}
+        />
 
-        <div>
-          <label>Estado:</label>
-          <select value={estado} onChange={(e) => setEstado(e.target.value)}>
-            <option value="Pendiente">Pendiente</option>
-            <option value="En proceso">En proceso</option>
-            <option value="Finalizada">Finalizada</option>
-          </select>
-        </div>
+        <input
+          type="number"
+          placeholder="Cantidad"
+          value={cantidad}
+          onChange={(e) => setCantidad(e.target.value)}
+        />
 
         <button type="submit">
-          {editandoId ? "Actualizar solicitud" : "Guardar solicitud"}
+          {editandoId ? "Actualizar producto" : "Guardar producto"}
         </button>
       </form>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
+      {mensaje && <p style={{ color: "green" }}>{mensaje}</p>}
 
-      <h2>Lista de solicitudes</h2>
+      <h2>Productos del carrito</h2>
 
-      {solicitudes.length === 0 ? (
-        <p>No hay solicitudes registradas.</p>
+      {productos.length === 0 ? (
+        <p>No hay productos registrados.</p>
       ) : (
         <ul>
-          {solicitudes.map((solicitud) => (
-            <li key={solicitud.id}>
-              <strong>{solicitud.titulo}</strong> - {solicitud.descripcion} -{" "}
-              {solicitud.estado} - {solicitud.fecha}
+          {productos.map((producto) => (
+            <li key={producto.id}>
+              <strong>{producto.nombre}</strong> - Precio: ${producto.precio} -
+              Cantidad: {producto.cantidad}
               <br />
-              <button onClick={() => editarSolicitud(solicitud)}>Editar</button>
-              <button onClick={() => eliminarSolicitud(solicitud.id)}>
+              <button onClick={() => editarProducto(producto)}>Editar</button>
+              <button onClick={() => eliminarProducto(producto.id)}>
                 Eliminar
               </button>
             </li>
           ))}
         </ul>
       )}
+
+      <h3>Total del carrito: ${totalCarrito}</h3>
     </div>
   )
 }

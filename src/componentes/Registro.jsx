@@ -8,7 +8,7 @@ function Registro({ cambiarPantalla }) {
   const [mensaje, setMensaje] = useState("")
   const [error, setError] = useState("")
 
-  const manejarRegistro = (e) => {
+  const manejarRegistro = async (e) => {
     e.preventDefault()
 
     if (!nombre || !correo || !password || !confirmarPassword) {
@@ -23,28 +23,37 @@ function Registro({ cambiarPantalla }) {
       return
     }
 
-    const usuarioGuardado = JSON.parse(localStorage.getItem("usuario"))
+    try {
+      const respuesta = await fetch("http://localhost:3001/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ nombre, correo, password }),
+      })
 
-    if (usuarioGuardado && usuarioGuardado.correo === correo) {
-      setError("Este correo ya está registrado")
+      const datos = await respuesta.json()
+
+      if (!respuesta.ok) {
+        setError(datos.mensaje)
+        setMensaje("")
+        return
+      }
+
+      setMensaje("Usuario registrado correctamente")
+      setError("")
+      setNombre("")
+      setCorreo("")
+      setPassword("")
+      setConfirmarPassword("")
+
+      setTimeout(() => {
+        cambiarPantalla("login")
+      }, 1000)
+    } catch (error) {
+      setError("No se pudo conectar con el backend")
       setMensaje("")
-      return
     }
-
-    const nuevoUsuario = {
-      nombre,
-      correo,
-      password,
-    }
-
-    localStorage.setItem("usuario", JSON.stringify(nuevoUsuario))
-
-    setMensaje("Usuario registrado correctamente")
-    setError("")
-    setNombre("")
-    setCorreo("")
-    setPassword("")
-    setConfirmarPassword("")
   }
 
   return (
