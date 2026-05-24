@@ -81,8 +81,8 @@ npm run tests
 
 Este comando ejecuta frontend y backend. La cobertura validada localmente queda por encima del 80%:
 
-- Frontend: 88.84% statements, 80% branches, 86.53% functions, 91.13% lines.
-- Backend: 90.54% statements, 62.37% branches, 97.67% functions, 90.84% lines.
+- Frontend: 100% statements, 100% branches, 100% functions, 100% lines.
+- Backend: 100% statements, 100% branches, 100% functions, 100% lines.
 
 Pruebas E2E con Playwright:
 
@@ -90,13 +90,26 @@ Pruebas E2E con Playwright:
 npm run testse2e
 ```
 
+Tambien se puede ejecutar con el alias solicitado en la guia:
+
+```bash
+npm run tests:e2e
+```
+
 Los E2E levantan una API aislada en `3044` y Vite en `5180`. Cubren:
 
 - Login.
+- Login con credenciales invalidas.
 - Registro.
+- Registro con confirmacion de contrasena invalida.
 - Agregar producto al carrito.
+- Editar cantidades del carrito.
 - Eliminar producto del carrito.
+- Vaciar carrito completo.
+- Validacion de pago con tarjeta invalida.
 - Checkout/pago simulado.
+
+Total de casos E2E: 9 escenarios funcionales con Playwright.
 
 Build de produccion:
 
@@ -109,6 +122,109 @@ Lint:
 ```bash
 npm run lint
 ```
+
+## Historias de Usuario y Criterios Gherkin
+
+### HU-01 Registro de usuario
+
+Como visitante, quiero crear una cuenta con mi nombre, correo y contrasena, para poder comprar productos en EcoMart.
+
+```gherkin
+Feature: Registro de usuarios
+  Scenario: Registro exitoso
+    Given el visitante se encuentra en la pantalla de registro
+    When diligencia nombre, correo y contrasena valida
+    Then el sistema crea la cuenta
+    And muestra confirmacion de registro
+
+  Scenario: Confirmacion de contrasena invalida
+    Given el visitante se encuentra en la pantalla de registro
+    When diligencia contrasenas diferentes
+    Then el sistema muestra "Las contrasenas no coinciden."
+```
+
+### HU-02 Login de usuario
+
+Como usuario registrado, quiero iniciar sesion con mis credenciales, para acceder a mi carrito y catalogo.
+
+```gherkin
+Feature: Login
+  Scenario: Login exitoso
+    Given existe un usuario registrado
+    When ingresa correo y contrasena validos
+    Then accede al catalogo de EcoMart
+    And ve su nombre en la barra superior
+
+  Scenario: Login fallido
+    Given el usuario esta en la pantalla de login
+    When ingresa credenciales incorrectas
+    Then el sistema muestra un mensaje de error
+```
+
+### HU-03 Gestion del carrito
+
+Como cliente, quiero agregar, editar, eliminar y vaciar productos del carrito, para controlar mi compra antes del pago.
+
+```gherkin
+Feature: CRUD del carrito
+  Scenario: Agregar producto
+    Given el cliente inicio sesion
+    When agrega un producto del catalogo
+    Then el producto aparece en el carrito
+    And el subtotal se actualiza
+
+  Scenario: Editar cantidades
+    Given el cliente tiene un producto en el carrito
+    When incrementa y decrementa la cantidad
+    Then el sistema recalcula el total
+
+  Scenario: Eliminar producto
+    Given el cliente tiene un producto en el carrito
+    When elimina la linea del carrito
+    Then el carrito queda sin esa linea
+
+  Scenario: Vaciar carrito
+    Given el cliente tiene productos en el carrito
+    When pulsa "Vaciar carrito"
+    Then el carrito queda vacio
+    And el subtotal queda en cero
+```
+
+### HU-04 Pago simulado
+
+Como cliente, quiero pagar el carrito mediante un checkout simulado, para confirmar la compra y recibir un numero de pedido.
+
+```gherkin
+Feature: Checkout simulado
+  Scenario: Pago exitoso
+    Given el cliente tiene productos en el carrito
+    When diligencia una tarjeta ficticia valida
+    And confirma el pago
+    Then el sistema registra el pedido
+    And muestra total, numero de pedido y ultimos 4 digitos de la tarjeta
+
+  Scenario: Pago invalido
+    Given el cliente tiene productos en el carrito
+    When diligencia una tarjeta invalida
+    Then el sistema bloquea el pago
+    And muestra el error de validacion
+```
+
+## Estrategia de Pruebas
+
+La estrategia sigue la piramide de pruebas:
+
+- Unitarias: validadores, helpers, componentes React, servicios de negocio y middlewares. Herramientas: Jest, Testing Library y Supertest.
+- Integracion: API REST con base SQLite en memoria, autenticacion, carrito, checkout y migraciones de base de datos.
+- E2E: flujos reales de usuario con Playwright, levantando frontend y backend aislados.
+- No funcionales: lint con ESLint, cobertura con Jest y configuracion lista para SonarQube.
+
+Metricas de aceptacion:
+
+- Cobertura unitaria global mayor a 80%; resultado actual: 100% frontend y 100% backend.
+- E2E minimo 8 casos; resultado actual: 9 casos.
+- Ejecucion local con `npm run dev`.
+- Build de produccion con `npm run build`.
 
 ## SonarQube
 

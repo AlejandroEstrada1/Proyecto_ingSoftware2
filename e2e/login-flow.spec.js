@@ -31,3 +31,14 @@ test("flujo de login", async ({ page, request }) => {
   await expect(page.getByTestId("shop-heading")).toBeVisible()
   await expect(page.getByTestId("user-greeting")).toContainText(nombre)
 })
+
+test("login rechaza credenciales incorrectas", async ({ page }) => {
+  await page.goto("/")
+  await page.getByTestId("email").fill(`no_existe_${Date.now()}@example.com`)
+  await page.getByTestId("password").fill("password-incorrecto")
+  await page.getByTestId("login-btn").click()
+
+  await expect(page.getByTestId("error-message")).toContainText(
+    "Credenciales incorrectas"
+  )
+})
