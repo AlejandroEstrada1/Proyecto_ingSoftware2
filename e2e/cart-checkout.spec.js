@@ -76,6 +76,25 @@ test("vaciar carrito elimina todos los productos", async ({ page, request }) => 
   await expect(page.getByTestId("cart-total")).toContainText("0,00")
 })
 
+test("carrito persiste despues de cerrar sesion y volver a entrar", async ({
+  page,
+  request,
+}) => {
+  const { email, password } = await crearUsuario(request, "cart_persistence")
+
+  await login(page, email, password)
+  await agregarPrimerProducto(page)
+  await page.getByLabel("Cerrar carrito").click()
+  await page.getByTestId("logout-btn").click()
+  await expect(page.getByTestId("login-btn")).toBeVisible()
+
+  await login(page, email, password)
+  await page.getByTestId("open-cart").click()
+
+  await expect(page.getByTestId("cart-item")).toBeVisible()
+  await expect(page.getByTestId("cart-total")).not.toContainText("0,00")
+})
+
 test("checkout valida datos de tarjeta antes de pagar", async ({
   page,
   request,
